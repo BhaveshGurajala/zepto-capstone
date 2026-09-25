@@ -1,0 +1,5 @@
+# Installs everything for all three modules. Each module also has its own
+# requirements.txt if you only want to run one of them (Python 3.11+).
+-r data_pipeline/requirements.txt
+-r analytics/requirements.txt
+-r support_assistant/requirements.txt

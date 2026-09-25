@@ -1,0 +1,11 @@
+# Install the CPU-only build of torch first to keep things small:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+sentence-transformers==6.1.0
+chromadb==1.5.9
+langgraph==1.2.12
+fastapi==0.141.1
+uvicorn==0.46.0
+pydantic==2.13.3
+requests==2.33.1
+httpx==0.28.1
+pytest==9.1.1
