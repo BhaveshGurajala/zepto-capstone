@@ -16,6 +16,18 @@ from sentence_transformers import SentenceTransformer
 
 from app.config import CHROMA_DIR, COLLECTION_NAME, DOCS_DIR, EMBEDDING_MODEL
 
+# Titles from the brief. The .txt files hold only the policy text, copied as-is.
+DOC_TITLES = {
+    "doc_01": "Delivery Policy",
+    "doc_02": "Returns & Refunds",
+    "doc_03": "Membership Tiers",
+    "doc_04": "Order Tracking",
+    "doc_05": "Order Cancellation Policy",
+    "doc_06": "Damaged or Missing Items",
+    "doc_07": "Gift Cards",
+    "doc_08": "Customer Support Hours",
+}
+
 
 @lru_cache(maxsize=1)
 def get_embedder() -> SentenceTransformer:
@@ -31,8 +43,7 @@ def load_documents() -> list[dict]:
     docs = []
     for path in sorted(DOCS_DIR.glob("doc_*.txt")):
         text = path.read_text(encoding="utf-8").strip()
-        title = text.split(":", 1)[0]
-        docs.append({"doc_id": path.stem, "title": title, "text": text})
+        docs.append({"doc_id": path.stem, "title": DOC_TITLES.get(path.stem, path.stem), "text": text})
     return docs
 
 

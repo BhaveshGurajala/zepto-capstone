@@ -87,7 +87,7 @@ The first run downloads the open-source `all-MiniLM-L6-v2` embedding model (abou
 ### Support assistant
 
 - **Offline by default:** every LLM step is behind `MOCK_LLM` (unset = mock). Embeddings (`all-MiniLM-L6-v2`) and ChromaDB run locally, so retrieval is real in both modes.
-- **Per-document chunking:** each policy is short (58–92 words) and about one topic, so one chunk per document keeps each policy intact. Chunk id = document id, which makes `sources` easy to read.
+- **Per-document chunking:** each policy is short (55–89 words) and about one topic, so one chunk per document keeps each policy intact. Chunk id = document id, which makes `sources` easy to read.
 - **LangGraph:** a `TypedDict` state, three nodes (`classify_intent`, `retrieve_and_answer`, `direct_answer`) and a conditional edge that routes on the intent, independent of `MOCK_LLM`.
 - **Guaranteed schema:** every response is a Pydantic `AskResponse(answer, sources, confidence)`. The optional real-LLM path validates the LLM's JSON and retries twice with a corrective prompt before returning a marked error.
 - **Docker:** CPU-only torch, with the model and index baked in at build time, so the container serves `/ask` with no network.
