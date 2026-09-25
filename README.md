@@ -70,27 +70,27 @@ The first run downloads the open-source `all-MiniLM-L6-v2` embedding model (abou
 
 ### Data pipeline
 
-- **Scope:** 4 full categories (Mystery, Historical Fiction, Poetry, Science Fiction), **93 books**, with pagination handled by following the `next` link. Categories are found by name from the site's sidebar, not hard-coded URLs.
-- **Separate steps** (`scrape.py`, `clean.py`, `database.py`, `queries.py`) run by `run_pipeline.py`. The raw scrape is saved to CSV, so cleaning and loading can be re-run offline and every step can be inspected.
-- **Messy rows:** numeric fields (`price_gbp`, `rating`) that fail to parse are **median-imputed**. Rows whose stock status, title or category can't be read are **dropped**, because a yes/no fact can't be sensibly imputed. Tests feed in broken rows to prove the pipeline doesn't crash.
+- **Scope:** 4 full categories (Mystery, Historical Fiction, Poetry, Science Fiction), **93 books**. The scraper follows the `next` link to get every page, and finds categories by name from the site's sidebar instead of hard-coded URLs.
+- **Separate steps** (`scrape.py`, `clean.py`, `database.py`, `queries.py`) run by `run_pipeline.py`. The raw scrape is saved to CSV, so cleaning and loading can be re-run offline.
+- **Messy rows:** when a value can't be read, the pipeline either fills it with the median or drops the row. Price and rating are numbers, so one bad value is filled with the median and one messy cell doesn't cost us the whole book. Stock status is a yes/no fact with no sensible middle value, so guessing would be making data up and those rows are dropped. Tests feed in broken rows to prove the rules work.
 - **Schema:** `categories(category_id PK, category_name UNIQUE)` ← `books(…, category_id FK)`, with `CHECK` constraints on `rating` (1–5) and `in_stock` (0/1). The database is rebuilt from scratch on each run.
-- **Queries:** 7 queries covering SELECT/WHERE, ORDER BY, LIMIT, DISTINCT, BETWEEN, IN, two JOINs and a GROUP BY. The JOIN is reproduced with `pd.merge`, and `assert_frame_equal` proves the results are identical.
+- **Queries:** 7 queries covering SELECT/WHERE, ORDER BY, LIMIT, DISTINCT, BETWEEN, IN, two JOINs and a GROUP BY. The JOIN is rebuilt with `pd.merge`, and `assert_frame_equal` proves both give the same result.
 
 ### Analytics
 
-- **One load:** `sns.load_dataset` is called once. The raw data is saved to `titanic.csv`, and both notebooks share the cleaning rules in `cleaning.py`.
-- **Missing values by threshold:** `embarked`/`embark_town` (0.22%) → drop rows. `age` (19.87%) → impute with the sex × class median. `deck` (77.22%) → `"Unknown"` as its own category, because whether a deck is recorded is itself informative (67% vs 30% survival).
-- **No leakage:** the stratified split (61.6 / 38.4 class balance) happens before any statistic is learned. Imputation, one-hot encoding and scaling live in a `ColumnTransformer` inside a `Pipeline`, so they are only ever fit on training rows. SMOTE sits inside an imblearn pipeline, so it only touches the training fold.
-- **Results:** the tuned Random Forest (`max_depth=8, max_features=0.5, n_estimators=400`, OOB 0.826) is deployed: test accuracy 0.820, precision 0.833, F1 0.738. Logistic Regression has the best AUC (0.861) and is the runner-up. The fare regression reaches R² 0.347 and shows clear heteroscedasticity.
-- **Saved artifact:** the whole fitted pipeline (preprocessing + model) is saved with `joblib.dump`, so it predicts directly on raw rows, including missing ages.
+- **One load:** `sns.load_dataset` is called once, the raw data is saved to `titanic.csv`, and both notebooks share the cleaning rules in `cleaning.py`.
+- **Missing values:** `embarked` (0.22%) → drop the 2 rows. `age` (19.87%) → fill with the median of the same sex and class, because different groups have very different ages. `deck` (77.22%) → too much to fill, but the missing values are not random (67% vs 30% survival), so I kept it with an "Unknown" label.
+- **No leakage:** the stratified split keeps the same 61.6 / 38.4 ratio in train and test, and happens before any filling-in, encoding or scaling. All preprocessing sits inside one scikit-learn `Pipeline` with the model, so every step learns only from training rows. SMOTE also runs on the training data only.
+- **Results:** I would deploy the tuned Random Forest (`max_depth=8, max_features=0.5, n_estimators=400`, OOB 0.826), because it has the highest accuracy (0.820), precision (0.833) and F1 (0.738). Logistic Regression is a strong runner-up with the best AUC (0.861). The fare regression explains about a third of fare (R² 0.347) and shows clear heteroscedasticity.
+- **Saved model:** the whole fitted pipeline (preprocessing + model) is saved with `joblib.dump`, so it predicts directly on raw rows, even with a missing age.
 
 ### Support assistant
 
-- **Offline by default:** every LLM step is behind `MOCK_LLM` (unset = mock). Embeddings (`all-MiniLM-L6-v2`) and ChromaDB run locally, so retrieval is real in both modes.
-- **Per-document chunking:** each policy is short (55–89 words) and about one topic, so one chunk per document keeps each policy intact. Chunk id = document id, which makes `sources` easy to read.
-- **LangGraph:** a `TypedDict` state, three nodes (`classify_intent`, `retrieve_and_answer`, `direct_answer`) and a conditional edge that routes on the intent, independent of `MOCK_LLM`.
-- **Guaranteed schema:** every response is a Pydantic `AskResponse(answer, sources, confidence)`. The optional real-LLM path validates the LLM's JSON and retries twice with a corrective prompt before returning a marked error.
-- **Docker:** CPU-only torch, with the model and index baked in at build time, so the container serves `/ask` with no network.
+- **Offline by default:** every LLM step is behind `MOCK_LLM` (unset = mock). Embeddings (`all-MiniLM-L6-v2`) and ChromaDB run locally, so retrieval always runs for real, even in mock mode.
+- **One chunk per document:** each policy is short (about 55–89 words) and covers only one policy, so splitting it further would only separate related sentences.
+- **LangGraph:** a `TypedDict` state, three nodes (`classify_intent`, `retrieve_and_answer`, `direct_answer`) and a conditional edge that routes on the intent.
+- **Guaranteed schema:** every answer is checked by the Pydantic model `AskResponse(answer, sources, confidence)`. The optional real-LLM path retries twice with a corrective prompt if the JSON is invalid.
+- **Docker:** CPU-only torch, with the model and index built into the image, so the container serves `/ask` with no network. I built and ran it on my Mac, along with the live scrape and all tests.
 
 ## Git workflow
 
