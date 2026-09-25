@@ -13,7 +13,7 @@ python run_pipeline.py --skip-scrape  # same, but reuse the committed data/raw_b
 python -m pytest tests -q             # cleaning + parser tests
 ```
 
-`--skip-scrape` is there so the rest of the pipeline can be re-run offline. The live scrape takes about 10 seconds.
+`--skip-scrape` is there so the rest of the pipeline can be re-run offline.
 
 ## Files
 
@@ -49,7 +49,7 @@ Why the split:
 - **Stock status is a yes/no fact.** There is no sensible "middle" value, and guessing would mean inventing data. So those rows are dropped. The same goes for a missing title or category, since a book without them can't be stored or joined.
 - Duplicate (title, category) pairs are removed.
 
-On the live site every row parsed cleanly: 0 rows dropped and 0 values imputed. `tests/test_clean.py` feeds in deliberately broken rows (`"N/A"` price, `"Zero"` rating, `"maybe"` availability) to show these rules work and the pipeline doesn't crash.
+In the scraped data every row parsed cleanly: 0 rows dropped and 0 values imputed. `tests/test_clean.py` feeds in deliberately broken rows (`"N/A"` price, `"Zero"` rating, `"maybe"` availability) to show these rules work and the pipeline doesn't crash.
 
 Note: every book in these 4 categories is listed as "In stock", so `in_stock` is True for all 93 rows. The parser still handles "Out of stock" correctly (it's covered by the tests).
 
@@ -94,4 +94,4 @@ The full SQL and output for each query are in [`query_results.md`](query_results
 
 ## read_sql vs merge (Task 6)
 
-All 7 query results are read into DataFrames with `pd.read_sql(sql, conn)`. Then the JOIN query (Q6) is rebuilt with pandas only: `pd.merge(books, categories, on="category_id")`, then the same filter (`rating >= 4`) and the same sort. `pd.testing.assert_frame_equal` confirms the two DataFrames are identical: 41 rows, same order, same values. The first 10 rows of each are printed side by side at the end of `query_results.md`.
+All 7 query results are read into DataFrames with `pd.read_sql(sql, conn)`. Then the JOIN query (Q6) is rebuilt with pandas only: `pd.merge(books, categories, on="category_id")`, then the same filter (`rating >= 4`) and the same sort. `pd.testing.assert_frame_equal` confirms the two DataFrames are identical: 41 rows, same order, same values. All 41 rows of both are printed side by side at the end of `query_results.md`.

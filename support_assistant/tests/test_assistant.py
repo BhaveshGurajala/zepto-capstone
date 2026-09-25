@@ -65,7 +65,7 @@ def test_policy_query_via_api(client):
     assert r.status_code == 200
     body = r.json()
     assert set(body) == {"answer", "sources", "confidence"}
-    assert body["answer"].startswith("Based on the retrieved context: Returns & Refunds")
+    assert body["answer"].startswith("Based on the retrieved context: Grocery and perishable items")
     assert body["sources"][0] == "doc_02" and len(body["sources"]) == 3
     assert body["confidence"] == 1.0
 

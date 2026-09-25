@@ -90,14 +90,14 @@ def main(skip_scrape: bool):
     pd.testing.assert_frame_equal(sql_df, merge_df, check_dtype=False)
 
     side_by_side = pd.concat(
-        {"pd.read_sql (SQL JOIN)": sql_df[["category_name", "title", "rating", "price_gbp"]].head(10),
-         "pd.merge (pandas only)": merge_df[["category_name", "title", "rating", "price_gbp"]].head(10)},
+        {"pd.read_sql (SQL JOIN)": sql_df[["category_name", "title", "rating", "price_gbp"]],
+         "pd.merge (pandas only)": merge_df[["category_name", "title", "rating", "price_gbp"]]},
         axis=1,
     )
     out.append("## Step 6 - `pd.read_sql` vs `pd.merge` for the JOIN query (Q6)\n")
     out.append("`pd.read_sql` ran Q6 inside SQLite. `pd.merge` rebuilt the same result from the "
-               "in-memory `books` and `categories` DataFrames with no SQL at all. The first 10 rows "
-               "of each are shown side by side:\n")
+               "in-memory `books` and `categories` DataFrames with no SQL at all. Every row "
+               "of both results is shown side by side:\n")
     out.append(show(side_by_side))
     out.append(f"Row count: read_sql = {len(sql_df)}, merge = {len(merge_df)}. "
                "`pd.testing.assert_frame_equal(sql_df, merge_df)` passed, so **both approaches "

@@ -9,12 +9,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # CPU-only torch keeps the image ~1.5 GB smaller than the default CUDA build
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download all-MiniLM-L6-v2 at build time so the container starts without network access
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+# From here on, only use the cached model - never reach out to Hugging Face at run time
+ENV HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 
 COPY app ./app
 COPY docs ./docs

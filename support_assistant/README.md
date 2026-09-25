@@ -26,7 +26,7 @@ docker run --rm -p 7860:7860 zepto-support
 curl -X POST localhost:7860/ask -H "Content-Type: application/json" -d '{"query": "How long does a refund take?"}'
 ```
 
-The `Dockerfile` uses `python:3.11-slim`. It installs CPU-only torch and the requirements, downloads the embedding model **at build time**, builds the ChromaDB index into the image, and serves `uvicorn main:app` on port 7860. The container needs no network at run time. `MOCK_LLM=1` is set in the image. To try the optional real LLM: `docker run -e MOCK_LLM=0 -e GROQ_API_KEY=... -p 7860:7860 zepto-support`.
+The `Dockerfile` uses `python:3.11-slim`. It installs CPU-only torch and the requirements, downloads the embedding model **at build time**, builds the ChromaDB index into the image, and serves `uvicorn main:app` on port 7860. `HF_HUB_OFFLINE=1` is set after the download, so the container needs no network at run time. `MOCK_LLM=1` is set in the image. To try the optional real LLM: `docker run -e MOCK_LLM=0 -e GROQ_API_KEY=... -p 7860:7860 zepto-support`.
 
 ## Example calls (recorded with `MOCK_LLM` unset)
 
@@ -38,10 +38,10 @@ curl -X POST localhost:7860/ask -H "Content-Type: application/json" \
 ```
 
 ```json
-{"answer":"Based on the retrieved context: Returns & Refunds: Grocery and perishable items may be reported for a return within 24 hours of delivery if damaged, spoiled, or incorrect; non-perishable packaged items may be returned within 7 days...","sources":["doc_02","doc_06","doc_08"],"confidence":1.0}
+{"answer":"Based on the retrieved context: Grocery and perishable items may be reported for a return within 24 hours of delivery if damaged, spoiled, or incorrect; non-perishable packaged items may be returned within 7 days of delivery in...","sources":["doc_02","doc_06","doc_05"],"confidence":1.0}
 ```
 
-"refund" is a keyword, so the query is routed to retrieval. The top chunk is `doc_02` (Returns & Refunds, cosine similarity 0.55), which is the right document. `sources` lists the ids of all 3 retrieved chunks, best first.
+"refund" is a keyword, so the query is routed to retrieval. The top chunk is `doc_02` (Returns & Refunds, cosine similarity 0.53), which is the right document. `sources` lists the ids of all 3 retrieved chunks, best first.
 
 **2. A second policy question**
 
@@ -51,7 +51,7 @@ curl -X POST localhost:7860/ask -H "Content-Type: application/json" \
 ```
 
 ```json
-{"answer":"Based on the retrieved context: Order Cancellation Policy: Orders can be cancelled free of cost any time before the order status changes to 'Packed', typically within the first 2 minutes of placing the order. Once an order has been...","sources":["doc_05","doc_02","doc_06"],"confidence":1.0}
+{"answer":"Based on the retrieved context: Orders can be cancelled free of cost any time before the order status changes to 'Packed', typically within the first 2 minutes of placing the order. Once an order has been packed, it can no longer...","sources":["doc_05","doc_02","doc_06"],"confidence":1.0}
 ```
 
 **3. General question → `classify_intent` → `direct_answer` (no retrieval)**
@@ -97,7 +97,7 @@ No keyword matches, so the query goes straight to `direct_answer`. Nothing is em
                        AskResponse (Pydantic): answer / sources / confidence ──► JSON reply
 ```
 
-1. **Ingestion — `app/ingest.py`.** `load_documents()` reads the 8 files in `docs/`. `chunk_documents()` makes **one chunk per document**, and the chunk id is the file name (`doc_01` … `doc_08`). Each document is only 58–92 words, well under the model's 256-token limit and each about a single policy, so splitting them further would only separate related sentences (a fee from its threshold, say).
+1. **Ingestion — `app/ingest.py`.** `load_documents()` reads the 8 files in `docs/`, which hold the policy text exactly as given in the brief. The titles are kept separately in `DOC_TITLES` and stored as metadata. `chunk_documents()` makes **one chunk per document**, and the chunk id is the file name (`doc_01` … `doc_08`). Each document is only 55–89 words, well under the model's 256-token limit and each about a single policy, so splitting them further would only separate related sentences (a fee from its threshold, say).
 2. **Embedding — `app/ingest.py`.** `embed()` encodes each chunk with the local `sentence-transformers` model **`all-MiniLM-L6-v2`**, normalized to unit length. `build_index()` stores the vectors, texts and metadata (`doc_id`, `title`) in the **ChromaDB collection `zepto_policies`** (`PersistentClient` at `./chroma_db`, `hnsw:space = cosine`). `get_collection()` builds this automatically at app startup if it's missing.
 3. **Retrieval — the `retrieve_and_answer` node, `retrieve()` in `app/graph.py`.** The query is embedded with the same model, and ChromaDB returns the **top 3** chunks by cosine similarity (similarity = 1 − cosine distance). This always runs for real, in both modes, because it needs no API key or network.
 4. **Generation — `retrieve_and_answer` and `direct_answer` in `app/graph.py`.** In mock mode, `retrieve_and_answer` returns `"Based on the retrieved context: {snippet}"`, where the snippet is the first ~200 characters of the top chunk, cut at a word boundary. `direct_answer` returns the fixed string `"I can only answer questions about Zepto policies right now."`. Every answer is built as the Pydantic model `AskResponse` (`app/schemas.py`), which FastAPI uses as the `response_model`.
