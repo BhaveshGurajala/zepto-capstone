@@ -105,23 +105,23 @@ A close third is `pclass` – `age` (−0.41): 1st-class passengers were older o
 
 **Chart 1 — Survival rate by class and sex** (`charts/03_story_class_sex.png`)
 
-**Interpretation.** Sex is the biggest single factor. In every class, women survived far more often than men. Class matters too: 97% of 1st-class women survived, but only 50% of 3rd-class women. For men the drop is from 37% in 1st class to 16% in 2nd and 14% in 3rd. "Women and children first" was applied, but a woman in 3rd class still had only a coin-flip chance.
+**Interpretation.** Sex is the biggest single factor: in every class, women survived far more often than men. Class sets the level within each sex, from 97% of 1st-class women down to only 50% of 3rd-class women, and from 37% of 1st-class men to 14% of 3rd-class men. "Women and children first" was clearly applied, but a woman in 3rd class still had only a coin-flip chance.
 
 **Chart 2 — Age of survivors vs non-survivors, by sex** (`charts/04_story_age_sex.png`)
 
-**Interpretation.** For men, deaths far outnumber survivals at almost every age. The one exception is young boys: under-12 males survived at 57%, versus 9–19% for every other male age band. For women, survivors outnumber deaths at almost every age. So age mainly matters for males: being a child was nearly as protective as being female. (The tall spikes around 21–25 and 25–30 are partly the imputed ages.)
+**Interpretation.** For men, deaths far outnumber survivals at almost every age. The exception is young boys: under-12 males survived at 57%, versus 9–19% in every other male age band. For women, survivors outnumber deaths at almost every age, so age mainly matters for males, where being a child was nearly as protective as being female.
 
 **Chart 3 — Fare vs age by class, coloured by outcome** (`charts/05_story_fare_age_class.png`)
 
-**Interpretation.** Each panel is one class, with fare on a log scale. 1st class is mostly blue (survived), and within it the survivors paid more (median fare £77 vs £45 for those who died). 3rd class is a dense orange (died) cluster at cheap fares around £7–£8, and fare barely separates survivors from non-survivors there (median £8.52 vs £8.05). So the money effect works mostly through class. The higher the fare within 1st and 2nd class, the better the odds, but in 3rd class almost everyone paid the same low price.
+**Interpretation.** 1st class is mostly blue (survived), and within it survivors paid clearly more (median fare £77 vs £45 for those who died). 3rd class is a dense orange (died) cluster at £7–£8, where fare barely separates the outcomes (median £8.52 vs £8.05). So money helped mostly by buying a better class: a higher fare improved the odds in 1st and 2nd class, but in 3rd class almost everyone paid the same low price.
 
 **Chart 4 — Survival rate by family size and sex** (`charts/06_story_family_size.png`)
 
-**Interpretation.** Travelling in a small family (2–4 people) was the best position: 81% of women and 32% of men survived, double the rate for men travelling alone (16%). Large families of 5 or more did very badly for both sexes (27% of women, 3% of men). They were mostly in 3rd class and would have found it hard to stay together and reach the boats. So family size has a non-linear effect: a little family helps, a lot hurts. This is why `sibsp` and `parch` show almost no linear correlation with `survived` in the heatmap.
+**Interpretation.** A small family (2–4 people) was the best position: 81% of women and 32% of men survived, double the rate for men travelling alone (16%). Large families of 5+ did very badly (27% of women, 3% of men); they were mostly in 3rd class and would have struggled to stay together and reach the boats. This up-then-down pattern is why `sibsp` and `parch` show almost no linear correlation with `survived` in the heatmap.
 
 **Chart 5 — Survival rate by port and class** (`charts/07_story_port_class.png`)
 
-**Interpretation.** Cherbourg passengers survived most often in every class (69% in 1st class). Southampton's 3rd class had the worst rate on the chart: 19% across 353 passengers, the largest single group aboard. The port itself didn't cause survival. Cherbourg simply carried a larger share of wealthy 1st-class passengers, and Southampton carried most of the 3rd-class men. The Queenstown cells for 1st and 2nd class hold only 2–3 people each, so those percentages shouldn't be trusted.
+**Interpretation.** Cherbourg passengers survived most often in every class (69% in 1st class), while Southampton's 3rd class was the worst cell: 19% of 353 passengers, the largest group aboard. The port didn't cause survival; Cherbourg simply carried a larger share of wealthy 1st-class passengers, and Southampton most of the 3rd-class men. The Queenstown 1st and 2nd class cells hold only 2–3 people, so those percentages shouldn't be trusted.
 
 **The story in one paragraph.**
 
@@ -240,7 +240,7 @@ The table keeps the two model types apart on purpose. Classification metrics are
 
 ### Recommendation
 
-**I would deploy the tuned Random Forest.** It has the highest test accuracy (**0.820**), precision (**0.833**) and F1 (**0.738**) of the four classifiers. Its OOB score (0.826) and CV F1 (0.769) agree with the test result, so the gain isn't a lucky split. Its AUC (0.839) is below Logistic Regression's **0.861**, so if the product needed well-ranked probabilities rather than yes/no decisions, or a model that's easy to explain, Logistic Regression would be the strong runner-up: F1 0.734, only 0.004 behind. The tuned forest's weak spot is recall (0.662). If missing a survivor were the expensive mistake, I would lower its decision threshold or add `class_weight='balanced'`, which Task 11 showed trades a little precision for about 6 points of recall.
+**I would deploy the tuned Random Forest**, because it has the highest test accuracy (**0.820**), precision (**0.833**) and F1 (**0.738**) of the four classifiers. Its OOB score (0.826) and CV F1 (0.769) agree with the test result, so the gain isn't a lucky split. Logistic Regression is a strong runner-up, with the best AUC (**0.861**) and an F1 only 0.004 lower, so it would be the better pick if the product needed well-ranked probabilities or an easily explained model. The tuned forest's weak spot is recall (0.662). If missing a survivor were the expensive mistake, I would lower its decision threshold or add `class_weight='balanced'`, which Task 11 showed buys about 6 points of recall for a little precision.
 
 ## Task 15 — Saved pipeline
 
