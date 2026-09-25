@@ -29,7 +29,7 @@ Run the notebooks in order. Both are committed **with their outputs**, so everyt
 
 ## One load, one story
 
-`sns.load_dataset('titanic')` appears **once** in the whole module, in the first code cell of `01_eda.ipynb`. The DataFrame is saved straight away with `df.to_csv("titanic.csv", index=False)`. If `titanic.csv` already exists, that cell reads it instead, so the notebook also runs offline. `02_modeling.ipynb` only ever calls `pd.read_csv("titanic.csv")`. Both notebooks import the same cleaning rules from `cleaning.py`.
+`sns.load_dataset('titanic')` appears **once** in the whole module, in the Task 1 load cell of `01_eda.ipynb`. The DataFrame is saved straight away with `df.to_csv("titanic.csv", index=False)`. If `titanic.csv` already exists, that cell reads it instead, so the notebook also runs offline. `02_modeling.ipynb` only ever calls `pd.read_csv("titanic.csv")`. Both notebooks import the same cleaning rules from `cleaning.py`.
 
 Why the saved CSV is the raw data and not the cleaned data: the modeling notebook must impute `age` **after** the train/test split, using training rows only. If the EDA's imputed ages were fed into the model, test-set information would already be baked into the training data. So only the rules that don't learn anything from the data (dropping 2 rows, the "Unknown" deck category) run before the split.
 
@@ -109,7 +109,7 @@ A close third is `pclass` – `age` (−0.41): 1st-class passengers were older o
 
 **Chart 2 — Age of survivors vs non-survivors, by sex** (`charts/04_story_age_sex.png`)
 
-**Interpretation.** For men, deaths far outnumber survivals at almost every age. The exception is young boys: under-12 males survived at 57%, versus 9–19% in every other male age band. For women, survivors outnumber deaths at almost every age, so age mainly matters for males, where being a child was nearly as protective as being female.
+**Interpretation.** For men, deaths far outnumber survivals at almost every age. The exception is young boys: boys aged 12 and under survived at 57%, versus 9–19% in every other male age band. For women, survivors outnumber deaths at almost every age, so age mainly matters for males, where being a child was nearly as protective as being female.
 
 **Chart 3 — Fare vs age by class, coloured by outcome** (`charts/05_story_fare_age_class.png`)
 
@@ -121,7 +121,7 @@ A close third is `pclass` – `age` (−0.41): 1st-class passengers were older o
 
 **Chart 5 — Survival rate by port and class** (`charts/07_story_port_class.png`)
 
-**Interpretation.** Cherbourg passengers survived most often in every class (69% in 1st class), while Southampton's 3rd class was the worst cell: 19% of 353 passengers, the largest group aboard. The port didn't cause survival; Cherbourg simply carried a larger share of wealthy 1st-class passengers, and Southampton most of the 3rd-class men. The Queenstown 1st and 2nd class cells hold only 2–3 people, so those percentages shouldn't be trusted.
+**Interpretation.** Cherbourg passengers survived more often than Southampton passengers in every class (69% vs 58% in 1st class), while Southampton's 3rd class was the worst cell: 19% of 353 passengers, the largest group aboard. The port didn't cause survival; Cherbourg simply carried a larger share of wealthy 1st-class passengers, and Southampton most of the 3rd-class men. The Queenstown 1st and 2nd class cells hold only 2–3 people, so those percentages shouldn't be trusted.
 
 **The story in one paragraph.**
 
@@ -144,7 +144,7 @@ This was just a sanity check during EDA. The model notebook does **not** reuse t
 
 ## Task 7 — Stratified split
 
-**Why stratify?** Task 1 showed the target is imbalanced: **61.6% died vs 38.4% survived** (about 1.6 : 1). A plain random 80/20 split could, by chance, put noticeably more or fewer survivors in the 178-row test set. That would make every metric, especially precision and recall for the minority "survived" class, depend on the luck of the split. With `stratify=y` both splits keep the same ratio (38.26% survived in train, 38.20% in test, as the table shows), so the test set is a fair miniature of the full data. The split happens **before** any imputation, encoding or scaling.
+**Why stratify?** Task 1 showed the target is imbalanced: **61.6% died vs 38.4% survived** (61.75% / 38.25% on the 889 rows left after dropping the 2 rows with no port; about 1.6 : 1). A plain random 80/20 split could, by chance, put noticeably more or fewer survivors in the 178-row test set. That would make every metric, especially precision and recall for the minority "survived" class, depend on the luck of the split. With `stratify=y` both splits keep the same ratio (38.26% survived in train, 38.20% in test, as the table shows), so the test set is a fair miniature of the full data. The split happens **before** any imputation, encoding or scaling.
 
 ## Feature choice
 
@@ -187,7 +187,7 @@ The ROC curves are in `charts/12_roc_curves.png` and the confusion-matrix plots 
 
 - **Logistic Regression** has the best AUC (**0.861**) and the highest accuracy of the three untuned models (0.809). Its errors are balanced: 13 false alarms, 21 missed survivors.
 - **Decision Tree** is slightly behind on everything (F1 0.714, AUC 0.851). It is the easiest to explain, but a single shallow tree loses some detail.
-- **Random Forest (default settings)** has the best recall (**0.706**, 48 of 68 survivors found) but the lowest AUC (0.824). With no depth limit it scores 0.985 on the training data vs 0.803 on test. It is overfitting, and that makes its probability estimates less smooth, which is what AUC measures. Task 12 tunes this.
+- **Random Forest (untuned, 300 trees)** has the best recall (**0.706**, 48 of 68 survivors found) but the lowest AUC (0.824). With no depth limit it scores 0.985 on the training data vs 0.803 on test. It is overfitting, and that makes its probability estimates less smooth, which is what AUC measures. Task 12 tunes this.
 
 All three sit close together at 0.80–0.81 accuracy. They mostly miss the same kind of passenger: a man who survived or a 3rd-class woman who died, which are the cases that go against the main pattern.
 
@@ -215,13 +215,13 @@ All three sit close together at 0.80–0.81 accuracy. They mostly miss the same 
 - **Best CV F1: 0.769.**
 - **OOB score: 0.826.** This is accuracy on the training rows each tree didn't see in its bootstrap sample, a free built-in validation estimate. It's close to the test accuracy of 0.820, so the model generalizes as expected.
 
-`max_depth=8` beat `None` (unlimited) in every combination. Capping depth is what fixed the default forest's overfitting. Using half the features at each split (`0.5`) beat `sqrt` / `log2`, since with only 10 input columns `sqrt` gives each split just 3 to choose from. On the test set the tuned forest improves accuracy (0.803 → **0.820**), precision (0.762 → **0.833**), F1 (0.733 → **0.738**) and AUC (0.824 → 0.839), at the cost of some recall (0.706 → 0.662).
+`max_depth=8` beat `None` (unlimited) in every combination. Capping depth is what fixed the default forest's overfitting. At the best depth (8), using half the features at each split (`0.5`) beat `sqrt` / `log2`, since with only 10 input columns `sqrt` gives each split just 3 to choose from. On the test set the tuned forest improves accuracy (0.803 → **0.820**), precision (0.762 → **0.833**), F1 (0.733 → **0.738**) and AUC (0.824 → 0.839), at the cost of some recall (0.706 → 0.662).
 
 ## Task 13 — Regression: predicting `fare`
 
 Features: `pclass, sex, age, sibsp, parch, embarked, survived`, using the same train/test rows as the classifiers and the same kind of pipeline (median impute + scale, one-hot with `drop="first"`).
 
-**Results.** On the same 178 test rows the linear model gets **MAE = £19.75, RMSE = £41.27, R² = 0.347, Adjusted R² = 0.316**. Adjusted R² uses n = 178 and p = 8 predictors after one-hot encoding. About a third of the variation in fare is explained, and almost all of that comes from `pclass` (−£26 per standard deviation) and port. RMSE is about twice MAE, which means a few very large errors dominate, not many medium ones.
+**Results.** On the same 178 test rows the linear model gets **MAE = £19.75, RMSE = £41.27, R² = 0.347, Adjusted R² = 0.316**. Adjusted R² uses n = 178 and p = 8 predictors after one-hot encoding. About a third of the variation in fare is explained, mostly from `pclass` (−£26 per standard deviation) and port, with family size (`sibsp`, `parch`) adding a smaller share. RMSE is about twice MAE, which means a few very large errors dominate, not many medium ones.
 
 **Heteroscedasticity: yes, clearly.** The residual plot is not a random, even band around zero. It fans out. For low predicted fares the residuals are tight (mean |error| **£9.71**). For the top third of predictions the mean |error| is **£35.40** with a standard deviation of **£59.20**, including one ticket under-predicted by over £400. The size of the error grows with the prediction (corr(|residual|, predicted) = 0.32). The residual histogram is also right-skewed rather than bell-shaped, and the model even predicts slightly negative fares for some 3rd-class passengers. All of this follows from `fare` being heavily right-skewed (notebook 01). A linear model on raw fare breaks the constant-variance assumption, so its confidence intervals would be unreliable. Modelling `log(fare)` instead would be the natural next step.
 
@@ -232,7 +232,7 @@ Features: `pclass, sex, age, sibsp, parch, embarked, survived`, using the same t
 | | *classification (0–1)* | | | | | ‖ | *regression* | | | |
 | Logistic Regression | 0.809 | 0.783 | 0.691 | 0.734 | **0.861** | ‖ | — | — | — | — |
 | Decision Tree | 0.798 | 0.776 | 0.662 | 0.714 | 0.851 | ‖ | — | — | — | — |
-| Random Forest (default) | 0.803 | 0.762 | **0.706** | 0.733 | 0.824 | ‖ | — | — | — | — |
+| Random Forest (untuned, 300 trees) | 0.803 | 0.762 | **0.706** | 0.733 | 0.824 | ‖ | — | — | — | — |
 | **Random Forest (tuned)** | **0.820** | **0.833** | 0.662 | **0.738** | 0.839 | ‖ | — | — | — | — |
 | Linear Regression (fare) | — | — | — | — | — | ‖ | 19.753 | 41.270 | 0.347 | 0.316 |
 
@@ -240,7 +240,7 @@ The table keeps the two model types apart on purpose. Classification metrics are
 
 ### Recommendation
 
-**I would deploy the tuned Random Forest**, because it has the highest test accuracy (**0.820**), precision (**0.833**) and F1 (**0.738**) of the four classifiers. Its OOB score (0.826) and CV F1 (0.769) agree with the test result, so the gain isn't a lucky split. Logistic Regression is a strong runner-up, with the best AUC (**0.861**) and an F1 only 0.004 lower, so it would be the better pick if the product needed well-ranked probabilities or an easily explained model. The tuned forest's weak spot is recall (0.662). If missing a survivor were the expensive mistake, I would lower its decision threshold or add `class_weight='balanced'`, which Task 11 showed buys about 6 points of recall for a little precision.
+**I would deploy the tuned Random Forest**, because it has the highest test accuracy (**0.820**), precision (**0.833**) and F1 (**0.738**) of the four classifiers. Its OOB score (0.826) and CV F1 (0.769) agree with the test result, so the gain isn't a lucky split. Logistic Regression is a strong runner-up, with the best AUC (**0.861**) and an F1 only 0.004 lower, so it would be the better pick if the product needed well-ranked probabilities or an easily explained model. The tuned forest's weak spot is recall (0.662). If missing a survivor were the expensive mistake, I would lower its decision threshold or add `class_weight='balanced'`, which raised Logistic Regression's recall by about 6 points in Task 11.
 
 ## Task 15 — Saved pipeline
 
