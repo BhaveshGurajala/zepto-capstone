@@ -43,13 +43,13 @@ Fields captured per book: `title`, `price` (e.g. `£47.82`), `star_rating` (e.g.
 | `availability` `"In stock"` | `in_stock` (bool) | Text starts with "in stock" → True, "out of stock" → False | **Row dropped** |
 | `title` / `category` | — | kept as text | **Row dropped** |
 
-Why the split:
+When a value can't be read, the pipeline handles it in one of two ways: it either fills it with the median or drops the row.
 
-- **Price and rating are numbers**, so one bad value can be filled with the median. The median is used instead of the mean because it isn't pulled around by very cheap or very expensive books. This way one messy cell doesn't cost us the whole book.
-- **Stock status is a yes/no fact.** There is no sensible "middle" value, and guessing would mean inventing data. So those rows are dropped. The same goes for a missing title or category, since a book without them can't be stored or joined.
+- **Price and rating are numbers**, so one bad value can be filled with the median. That way one messy cell doesn't cost us the whole book. We use the median, not the mean, because very cheap or very expensive books would pull the mean around.
+- **Stock status is a yes/no fact**, so there's no sensible middle value, and guessing would be making the data up. So those rows are dropped. The same goes for a missing title or category: without them, a book can't be stored or linked to its category.
 - Duplicate (title, category) pairs are removed.
 
-In the scraped data every row parsed cleanly: 0 rows dropped and 0 values imputed. `tests/test_clean.py` feeds in deliberately broken rows (`"N/A"` price, `"Zero"` rating, `"maybe"` availability) to show these rules work and the pipeline doesn't crash.
+On the live site, every row parsed cleanly: 0 rows dropped and 0 values filled. `tests/test_clean.py` feeds in deliberately broken rows (`"N/A"` price, `"Zero"` rating, `"maybe"` availability) to prove the rules work.
 
 Note: every book in these 4 categories is listed as "In stock", so `in_stock` is True for all 93 rows. The parser still handles "Out of stock" correctly (it's covered by the tests).
 
